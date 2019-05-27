@@ -64,7 +64,7 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    if err != nil { return nil, err }
    sheetName := xf.GetSheetName(0)
    if sheetName == "" {
-      return nil, fmt.Errorf("Can not get sheet name:%v.", sheetName)
+      return nil, fmt.Errorf("Can not get sheet name:%v", sheetName)
    }
    rows, err := xf.GetRows(sheetName)
    if err != nil { return nil, err }
@@ -74,11 +74,6 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    vals, err := xsl.Rows2Json(rows)
    if err != nil { return nil, err }
    return vals, nil
-}
-
-func (xls *Excelsrv) Healthz(w http.ResponseWriter, r *http.Request) {
-  w.Header().Set("Content-Type", "application/json")
-  w.WriteHeader(http.StatusOK)
 }
 
 func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
@@ -125,3 +120,10 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    w.Header().Set("Content-Type", "application/json")
    w.Write(valj)
 }
+
+// check health
+func (xls *Excelsrv) Healthz(w http.ResponseWriter, r *http.Request) {
+  w.Header().Set("Content-Type", "application/json")
+  w.WriteHeader(http.StatusOK)
+}
+
