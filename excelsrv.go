@@ -1,5 +1,4 @@
 package main
-//https://stackoverflow.com/questions/47187680/how-do-i-change-fields-a-slice-of-structs-using-reflect
 
 import(
    "time"
@@ -10,7 +9,7 @@ import(
    "context"
    log "github.com/sirupsen/logrus"
    "github.com/gorilla/mux"
-   "./excel"
+   "github.com/asccclass/excelx/excel"
 )
 
 func main() {
