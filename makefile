@@ -25,7 +25,7 @@ stop:
 	docker stop ${ContainerName}
 	
 test:
-	curl -X POST -F "xlsx=@/root/develop/excelx/2018.xlsx" https://devwteamapi.test5.sinica.edu.tw/excel/excel2json
+	curl -X POST -F "xlsx=@${CURDIR}2018.xlsx" https://devwteamapi.test5.sinica.edu.tw/excel/excel2json
 
 log:
 	docker logs -f -t --tail 20 ${ContainerName}
