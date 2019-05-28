@@ -44,14 +44,15 @@ func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
    title := rows[0]
    var errorStr string = ""
 
-   vals := make([]map[string]string, len(rows))
+   vals := make([]map[string]string, len(rows)-1)
    for i, row := range rows {
       if i == 0 { continue }
       val, err := xsl.Rows2JsonSingleLine(row, title)
       if err != nil {
          errorStr += "Line " + strconv.Itoa(i) + ": " + err.Error() + "\n"
       }
-      vals = append(vals, val) 
+      // vals = append(vals, val) 
+      vals[i-1] = val 
    }
    if errorStr != "" {
       return nil, fmt.Errorf("Row2Json:%v", errorStr)
@@ -62,11 +63,12 @@ func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
 func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    xf, err := excelize.OpenFile(f)
    if err != nil { return nil, err }
-   sheetName := xf.GetSheetName(0)
+   sheetName := xf.GetSheetName(1) // start from 1
    if sheetName == "" {
       return nil, fmt.Errorf("Can not get sheet name:%v", sheetName)
    }
-   rows, err := xf.GetRows(sheetName)
+   // rows, err := xf.GetRows(sheetName)
+   rows := xf.GetRows(sheetName)
    if err != nil { return nil, err }
    if len(rows) == 0 {
       return nil, fmt.Errorf("No data in %v file.", xf.GetSheetName(0))
