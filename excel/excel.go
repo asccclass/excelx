@@ -65,13 +65,13 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    if err != nil { return nil, err }
    sheetName := xf.GetSheetName(1) // start from 1
    if sheetName == "" {
-      return nil, fmt.Errorf("Can not get sheet name:%v", sheetName)
+      return nil, fmt.Errorf("Can not get " + f + " sheet name.")
    }
-   // rows, err := xf.GetRows(sheetName)
-   rows := xf.GetRows(sheetName)
+   rows, err := xf.GetRows(sheetName)
+   // rows := xf.GetRows(sheetName)
    if err != nil { return nil, err }
    if len(rows) == 0 {
-      return nil, fmt.Errorf("No data in %v file.", xf.GetSheetName(0))
+      return nil, fmt.Errorf("No data in file.")
    }
    vals, err := xsl.Rows2Json(rows)
    if err != nil { return nil, err }
