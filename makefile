@@ -19,7 +19,7 @@ docker: build
 
 run: docker
 	docker run --rm -d --name ${ContainerName} -v /etc/localtime:/etc/localtime:ro \
-	--env-file ./envfile -p ${PORT}:80 ${ImageName}
+	--restart=always --env-file ./envfile -p ${PORT}:80 ${ImageName}
 	
 stop:
 	docker stop ${ContainerName}
