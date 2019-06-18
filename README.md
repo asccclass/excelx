@@ -6,6 +6,11 @@
 go get github.com/360EntSecGroup-Skylar/excelize
 ```
 
+### 建立環境
+```
+mkdir tmp
+```
+
 
 ### 參考資料
 * [go reflect](https://stackoverflow.com/questions/47187680/how-do-i-change-fields-a-slice-of-structs-using-reflect)
