@@ -79,6 +79,13 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
 }
 
 func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
+   savedPath := ""
+
+   defer func() {
+      if savedPath != "" {
+         _ = os.Remove(savedPath)
+      }
+   }()
    // 10 << 20 specifies a maximum upload of 10 MB files.
    r.ParseMultipartForm(10 << 20)
    file, handler, err := r.FormFile("xlsx")
@@ -91,7 +98,7 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
 
    nameParts := strings.Split(handler.Filename, ".")
    filename := nameParts[1]
-   savedPath := filepath.Join("./", filename)
+   savedPath = filepath.Join("/tmp/excel/", filename)
    f, err := os.OpenFile(savedPath, os.O_WRONLY|os.O_CREATE, 0666)
    if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
