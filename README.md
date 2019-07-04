@@ -11,6 +11,15 @@ go get github.com/360EntSecGroup-Skylar/excelize
 mkdir tmp
 ```
 
+### RESRful API
+* /excel2json
+  - 功能：將上傳的Excel檔案轉成 json 檔
+
+* /json2excel
+  - 功能：將json檔案轉成excel檔
+
+* /healthz
+  - 功能：健康檢查
 
 ### 參考資料
 * [go reflect](https://stackoverflow.com/questions/47187680/how-do-i-change-fields-a-slice-of-structs-using-reflect)
