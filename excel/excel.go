@@ -15,8 +15,15 @@ import(
 )
 
 type Excelsrv struct {
+   Rows map[string]string
 }
 
+//將Json轉為Excel
+func (xls *Excelsrv) Json2Excel(rows []map[string]string)(error) {
+   return nil
+}
+
+// 將Excel檔案轉為Json輸出
 func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (map[string]string, error) {
    cellValues := reflect.ValueOf(row)
    titleFields := reflect.ValueOf(title)
@@ -91,7 +98,7 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    file, handler, err := r.FormFile("xlsx")
    if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("%v", err)
+      log.Printf("FormFile error): %v", err)
       return
    }
    defer file.Close()
@@ -102,14 +109,14 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    f, err := os.OpenFile(savedPath, os.O_WRONLY|os.O_CREATE, 0666)
    if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("%v(%v)", err, savedPath)
+      log.Printf("os.OpenFile() error:%v(%v)", err, savedPath)
       return
    }
    defer f.Close()
    _, err = io.Copy(f, file)
    if err != nil {
       http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("%v", err)
+      log.Printf("io.Copy() Error:%v", err)
       return
    }
 
@@ -123,7 +130,7 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    valj, err := json.Marshal(vals)
    if err != nil { 
       http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("%v", err)
+      log.Printf("Marshal error:%v", err)
       return 
    }
    w.Header().Set("Content-Type", "application/json")
