@@ -38,7 +38,7 @@ docker pull devdockersrv.test5.sinica.edu.tw:5000/its/excel
 
 * run image
 ```
-ImageName?=its/excel
+ImageName?=devdockersrv.test5.sinica.edu.tw/its/excel:0.1
 ContainerName?=doreexcel
 MKFILE := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURDIR := $(dir $(MKFILE))
