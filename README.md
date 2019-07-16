@@ -21,5 +21,32 @@ mkdir tmp
 * /healthz
   - 功能：健康檢查
 
+### 透過Docker安裝程式
+* /etc/caddy/Caddyfile
+```
+proxy /excel localhost:11004 {
+   without /excel
+   websocket
+   transparent
+}
+```
+
+* pull image
+```
+docker pull devdockersrv.test5.sinica.edu.tw:5000/its/excel 
+```
+
+* run image
+```
+ImageName?=its/excel
+ContainerName?=doreexcel
+MKFILE := $(abspath $(lastword $(MAKEFILE_LIST)))
+CURDIR := $(dir $(MKFILE))
+docker run --restart=always -d --name doreexcel -v /etc/localtime:/etc/localtime:ro \
+	-v ${CURDIR}tmp:/tmp/excel \
+	--env-file ./envfile \
+	-p ${PORT}:80 ${ImageName}
+```
+
 ### 參考資料
 * [go reflect](https://stackoverflow.com/questions/47187680/how-do-i-change-fields-a-slice-of-structs-using-reflect)
