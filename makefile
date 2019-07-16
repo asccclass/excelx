@@ -20,7 +20,8 @@ docker: build
 run: docker
 	docker run --restart=always -d --name ${ContainerName} -v /etc/localtime:/etc/localtime:ro \
         -v ${CURDIR}tmp:/tmp/excel \
-	--env-file ./envfile -p ${PORT}:80 ${ImageName}
+	--env-file ./envfile \
+	-p ${PORT}:80 ${ImageName}
 	
 stop:
 	docker stop ${ContainerName}
