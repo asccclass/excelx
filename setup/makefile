@@ -1,12 +1,12 @@
 APPVersion?=0.1
 PORT?=11004
-ImageName?=devdockersrv.test5.sinica.edu.tw/its/excel
+ImageName?=sinicaapp/excel
 ContainerName?=doreexcel
 MKFILE := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURDIR := $(dir $(MKFILE))
 
 run: 
-	mkdir -p tmp
+	mkdir -p ${CURDIR}tmp
 	docker run --restart=always -d --name ${ContainerName} -v /etc/localtime:/etc/localtime:ro \
         -v ${CURDIR}tmp:/tmp/excel \
 	--env-file ./envfile \
