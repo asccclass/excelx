@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="zh_TW">
+<head>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Resource Server API</title>
+  <link rel="stylesheet" href="//unpkg.com/docsify/themes/vue.css">
+</head>
+<body>
+  <div data-app id="app">資訊讀取中...</div>
+  <script>
+   window.$docsify = {
+      loadSidebar: true,
+      subMaxLevel: 3,
+      coverpage: true,
+      search: {
+         maxAge: 86400000, // 过期时间，单位毫秒，默认一天
+         noData: '找不到结果',//搜索不到结果时显示
+         paths: 'auto',//自动
+         placeholder: '搜索',//搜索框提示
+      },
+   }
+  </script>
+   <script src="//unpkg.com/docsify/lib/plugins/search.js"></script>
+   <script src="//unpkg.com/docsify/lib/docsify.min.js"></script>
+</body>
+</html>
