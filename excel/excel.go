@@ -114,13 +114,13 @@ func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
       if i == 0 { continue }
       val, err := xsl.Rows2JsonSingleLine(row, title)
       if err != nil {
-         errorStr += "Line " + strconv.Itoa(i) + ": " + err.Error() + "\n"
+         errorStr += "Line " + strconv.Itoa(i) + ": " + err.Error()
       }
       // vals = append(vals, val) 
       vals[i-1] = val 
    }
    if errorStr != "" {
-      return nil, fmt.Errorf("Row2Json:%v", errorStr)
+      return nil, fmt.Errorf("Row2Json:%s", errorStr)
    }
    return vals, nil
 }
@@ -154,7 +154,7 @@ func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request)
       if err != nil {
          w.Header().Set("Content-Type", "application/json;charset=UTF-8")
          w.WriteHeader(http.StatusOK)
-         fmt.Fprintf(w, "{errMsg: \"%v\"}", err)
+         fmt.Fprintf(w, "{\"errMsg\": \"%v\"}", err)
       }
    }()
    b, err := ioutil.ReadAll(r.Body)  // read json file from web
