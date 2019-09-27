@@ -4,22 +4,80 @@ import(
    "io"
    "os"
    "fmt"
+   "sort"
+   "time"
    "reflect"
    "strings"
    "strconv"
+   "math/rand"
    "path/filepath"
    "net/http"
+   "io/ioutil"
    "encoding/json"
    log "github.com/sirupsen/logrus"
    "github.com/360EntSecGroup-Skylar/excelize"
 )
 
+var (
+   Chars = map[int]string{ 0:"A", 1:"B", 2:"C", 3:"D", 4:"E", 5:"F", 6:"G", 7:"H", 8:"I", 9:"J", 10:"K", 11:"L", 12:"M",  13:"N", 14:"O", 15:"P", 16:"Q", 17:"R", 18:"S", 19:"T", 20:"U", 21:"V", 22:"W", 23:"X", 24:"Y", 25:"Z", 26:"AA", }
+)
+
+type ExcelJson struct {
+   SheetName	string			`json:"sheetname"`
+   Rows		[]map[string]string	`json:"rows"`
+   Headers	[]string
+}
+
 type Excelsrv struct {
    Rows map[string]string
 }
 
+// 取得tab數量及名稱
+func(xls *Excelsrv) GetSheetTabs(f *excelize.File)(int, []string) {
+   var sheetCnt int = 0
+   var sheetName []string
+   for index, name := range f.GetSheetMap() {
+      sheetCnt = index
+      sheetName = append(sheetName, name)
+   }
+   return sheetCnt, sheetName
+}
+
+// 從associate arrray 取得Headers
+func(xls *Excelsrv) SetHeader(rows []map[string]string)([]string) {
+   var header []string
+   if len(rows) <= 0 {
+      return header
+   }
+   for key, _ := range rows[0] {
+      header = append(header, key)
+   }
+   sort.Strings(header)
+   return header
+}
+
 //將Json轉為Excel
-func (xls *Excelsrv) Json2Excel(rows []map[string]string)(error) {
+func (xls *Excelsrv) Json2Excel(f *excelize.File, sheetName string, rows ExcelJson)(error) {
+   index := f.NewSheet(sheetName)
+   line := 1
+   for i, row := range rows.Rows {		// row
+      if(i == 0)  {  // write header
+         for k, head := range rows.Headers {
+            f.SetCellValue(sheetName, Chars[k] + fmt.Sprint(line), head) 
+         }
+         line++
+      }
+      for j, head := range rows.Headers {	// cell
+         f.SetCellValue(sheetName, Chars[j] + fmt.Sprint(line), row[head])
+      } 
+      line++
+   }
+   f.SetActiveSheet(index)
+/*
+   if err := f.SaveAs("/tmp/excel/tmp1.xlsx"); err != nil {
+      return nil, fmt.Errorf("Write file error(%v).", err)
+   }
+*/
    return nil
 }
 
@@ -70,6 +128,11 @@ func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
 func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    xf, err := excelize.OpenFile(f)
    if err != nil { return nil, err }
+
+   // 檢查sheet數量
+   if xf.SheetCount > 1 {
+      return nil, fmt.Errorf("上傳之Excel檔案表單(sheet)數量大於一個.")
+   }
    sheetName := xf.GetSheetName(1) // start from 1
    if sheetName == "" {
       return nil, fmt.Errorf("Can not get " + f + " sheet name.")
@@ -83,6 +146,67 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    vals, err := xsl.Rows2Json(rows)
    if err != nil { return nil, err }
    return vals, nil
+}
+
+func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request) {
+   var err error
+   defer func() {
+      if err != nil {
+         w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+         w.WriteHeader(http.StatusOK)
+         fmt.Fprintf(w, "{errMsg: \"%v\"}", err)
+      }
+   }()
+   b, err := ioutil.ReadAll(r.Body)  // read json file from web
+   if err != nil {
+      return
+   }
+   jsonfile := []ExcelJson{} 
+   if !json.Valid(b)  {  // check json file
+      err = fmt.Errorf("json data is invalid(%v).", string(b))
+      return;
+   }
+   defer r.Body.Close()
+   if err = json.Unmarshal(b, &jsonfile); err != nil {
+      err = fmt.Errorf("Unmarshal body error(%v).", err)
+      return
+   }
+   f := excelize.NewFile()
+   for i, jsf := range jsonfile {
+      jsonfile[i].Headers = xls.SetHeader(jsf.Rows)
+      if err = xls.Json2Excel(f, jsf.SheetName, jsonfile[i]); err != nil {
+         err = fmt.Errorf("Json to Excel error(%v).", err)
+         return
+      }
+   }
+   rand.Seed(time.Now().UnixNano())
+   x := rand.Intn(10000)   // filename
+   fname := fmt.Sprintf("%v.xlsx", x)
+   if err := f.SaveAs("/tmp/excel/" + fname); err != nil {
+      err = fmt.Errorf("Write file error(%v).", err)
+      return
+   }
+
+   // 輸出下載檔案
+   Openfile, err := os.Open("/tmp/excel/" + fname)
+   defer Openfile.Close() //Close after function return
+   if err != nil {
+      err = fmt.Errorf("File not found.")
+      return
+   }
+   FileHeader := make([]byte, 512)
+   Openfile.Read(FileHeader)
+   FileStat, _ := Openfile.Stat()                     //Get info from file
+   FileSize := strconv.FormatInt(FileStat.Size(), 10) //Get file size as a string
+
+   w.Header().Set("Content-Disposition", "attachment; filename="+fname)
+   w.Header().Set("Content-Type",  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+   w.Header().Set("Content-Length", FileSize)
+   w.Header().Set("Content-Transfer-Encoding", "binary")
+   w.Header().Set("Expires", "0")
+   Openfile.Seek(0, 0)
+   io.Copy(w, Openfile) //'Copy' the file to the client
+   _ = os.Remove("/tmp/excel/" + fname)
 }
 
 func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
@@ -122,8 +246,9 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
 
    vals, err := xls.NewExcelSrv(savedPath)
    if err != nil { 
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("NewExcelSrc: %v", err)
+      w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+      w.WriteHeader(http.StatusOK)
+      fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
       return 
    }
 

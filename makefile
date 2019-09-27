@@ -23,10 +23,12 @@ dockerpush:
 	docker push ${ImageName}:${APPVersion}
 
 run: docker
-	docker run --restart=always -d --name ${ContainerName} -v /etc/localtime:/etc/localtime:ro \
+	docker run --restart=always -d --name ${ContainerName} \
+	-v /etc/localtime:/etc/localtime:ro \
         -v ${CURDIR}tmp:/tmp/excel \
 	--env-file ./envfile \
 	-p ${PORT}:80 ${ImageName}:${APPVersion}
+	sh clean.sh
 	
 stop:
 	docker stop ${ContainerName}
@@ -39,3 +41,8 @@ log:
 
 rm:
 	docker rm ${ContainerName}
+
+re:stop rm run
+
+login:
+	docker exec -it ${ContainerName} /bin/sh
