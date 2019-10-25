@@ -29,6 +29,7 @@ func main() {
    // API
    router := mux.NewRouter()
    router.HandleFunc("/excel2json", xls.ParsefileFromWeb).Methods("POST")
+   // router.HandleFunc("/csv2json", xls.ParseCSVfileFromWeb).Methods("POST")
    router.HandleFunc("/json2excel", xls.DownloadFileFromWeb).Methods("POST")
    router.HandleFunc("/healthz", xls.Healthz).Methods("GET")
 

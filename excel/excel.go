@@ -6,6 +6,7 @@ import(
    "fmt"
    "sort"
    "time"
+   // "bytes"
    "reflect"
    "strings"
    "strconv"
@@ -13,13 +14,18 @@ import(
    "path/filepath"
    "net/http"
    "io/ioutil"
+   "encoding/csv"
    "encoding/json"
    log "github.com/sirupsen/logrus"
+   "github.com/asccclass/sherrytime"
+   // _ "github.com/paulrosania/go-charset/data"
+   // "github.com/paulrosania/go-charset/charset"
+   "github.com/saintfish/chardet"
    "github.com/360EntSecGroup-Skylar/excelize"
 )
 
 var (
-   Chars = map[int]string{ 0:"A", 1:"B", 2:"C", 3:"D", 4:"E", 5:"F", 6:"G", 7:"H", 8:"I", 9:"J", 10:"K", 11:"L", 12:"M",  13:"N", 14:"O", 15:"P", 16:"Q", 17:"R", 18:"S", 19:"T", 20:"U", 21:"V", 22:"W", 23:"X", 24:"Y", 25:"Z", 26:"AA", }
+   Chars = map[int]string{ 0:"A", 1:"B", 2:"C", 3:"D", 4:"E", 5:"F", 6:"G", 7:"H", 8:"I", 9:"J", 10:"K", 11:"L", 12:"M",  13:"N", 14:"O", 15:"P", 16:"Q", 17:"R", 18:"S", 19:"T", 20:"U", 21:"V", 22:"W", 23:"X", 24:"Y", 25:"Z", 26:"AA", 27:"AB",}
 )
 
 type ExcelJson struct {
@@ -30,6 +36,12 @@ type ExcelJson struct {
 
 type Excelsrv struct {
    Rows map[string]string
+}
+
+func(xls *Excelsrv) Error(w http.ResponseWriter, err error) {
+   w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+   w.WriteHeader(http.StatusOK)
+   fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
 }
 
 // 取得tab數量及名稱
@@ -96,8 +108,18 @@ func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (ma
    }
 
    cells := make(map[string]string, len)
+   st := sherrytime.NewSherryTime("Asia/Taipei", "-")  // Initial
    for i := 0; i < cellValues.Len(); i++ {
-      cells[titleFields.Index(i).String()] = cellValues.Index(i).String()
+      if titleFields.Index(i).String() == "certified_date" {
+         certdate, err := st.TransferFormat(cellValues.Index(i).String())
+         if err != nil {
+            cells[titleFields.Index(i).String()] = "日期格式錯誤"
+         } else {
+            cells[titleFields.Index(i).String()] = certdate
+         }
+      }  else  {
+         cells[titleFields.Index(i).String()] = cellValues.Index(i).String()
+      }
    }
    return cells, nil
 }
@@ -146,6 +168,18 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    vals, err := xsl.Rows2Json(rows)
    if err != nil { return nil, err }
    return vals, nil
+}
+
+// CharsetDetect 偵測檔案內編碼
+func (xls *Excelsrv) CharsetDetect(str []byte)(*chardet.Result, error) {
+   detector := chardet.NewTextDetector()
+   result, err := detector.DetectBest(str)
+   if err != nil {
+      return nil, err
+   }
+   return result, nil
+   // Detected charset is %s, language is %s", result.Charset, result.Language)
+   // Detected charset is GB-18030, language is zh
 }
 
 func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request) {
@@ -209,6 +243,7 @@ func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request)
    _ = os.Remove("/tmp/excel/" + fname)
 }
 
+// ParsefileFromWeb 將excel/csv轉為CSV
 func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    savedPath := ""
 
@@ -228,28 +263,66 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    defer file.Close()
 
    nameParts := strings.Split(handler.Filename, ".")
-   filename := nameParts[1]
-   savedPath = filepath.Join("/tmp/excel/", filename)
-   f, err := os.OpenFile(savedPath, os.O_WRONLY|os.O_CREATE, 0666)
-   if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("os.OpenFile() error:%v(%v)", err, savedPath)
-      return
-   }
-   defer f.Close()
-   _, err = io.Copy(f, file)
-   if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("io.Copy() Error:%v", err)
-      return
-   }
+   fileExtension := nameParts[len(nameParts)-1]
+   var vals []map[string]string
+   var xcharset *chardet.Result
 
-   vals, err := xls.NewExcelSrv(savedPath)
-   if err != nil { 
-      w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-      w.WriteHeader(http.StatusOK)
-      fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
-      return 
+   if fileExtension == "csv"  {
+      r := csv.NewReader(file)
+      line := 0  
+      var header []string
+      for {
+         rows, err := r.Read()   // []string
+         if err == io.EOF || err != nil {
+            break
+         }
+         if line == 0 {
+            xcharset, err = xls.CharsetDetect([]byte(rows[0]))
+            if err != nil {
+               xls.Error(w, fmt.Errorf("encoding detect error"))
+               return
+            }
+            log.Printf("charset=%v", xcharset)
+            for _, h := range rows {
+               header = append(header, h)
+            }
+            line++
+            continue
+         }
+         cell := make(map[string]string, len(rows))
+         for j, data := range rows {
+            cell[header[j]] = data
+         }
+         vals = append(vals, cell) 
+      }
+      if len(vals) == 0 {
+         xls.Error(w, fmt.Errorf("no data in csv file"))
+         return
+      }
+   } else {
+      filename := nameParts[1]
+      savedPath = filepath.Join("/tmp/excel/", filename)
+      f, err := os.OpenFile(savedPath, os.O_WRONLY|os.O_CREATE, 0666)
+      if err != nil {
+         http.Error(w, err.Error(), http.StatusInternalServerError)
+         log.Printf("os.OpenFile() error:%v(%v)", err, savedPath)
+         return
+      }
+      defer f.Close()
+      _, err = io.Copy(f, file)
+      if err != nil {
+         http.Error(w, err.Error(), http.StatusInternalServerError)
+         log.Printf("io.Copy() Error:%v", err)
+         return
+      }
+
+      vals, err = xls.NewExcelSrv(savedPath)
+      if err != nil { 
+         w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+         w.WriteHeader(http.StatusOK)
+         fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
+         return 
+      }
    }
 
    valj, err := json.Marshal(vals)
@@ -258,7 +331,9 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
       log.Printf("Marshal error:%v", err)
       return 
    }
-   w.Header().Set("Content-Type", "application/json")
+   w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+   if fileExtension == "csv" {  // 要作格式轉換
+   }
    w.Write(valj)
 }
 
