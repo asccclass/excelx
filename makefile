@@ -1,5 +1,5 @@
 BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
-APPVersion?=0.1
+APPVersion?=0.2
 ContainerTagName?=its/excel
 APP?=app
 PORT?=11004

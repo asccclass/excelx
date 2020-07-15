@@ -110,10 +110,15 @@ func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (ma
    cells := make(map[string]string, len)
    st := sherrytime.NewSherryTime("Asia/Taipei", "-")  // Initial
    for i := 0; i < cellValues.Len(); i++ {
-      if titleFields.Index(i).String() == "certified_date" {
-         certdate, err := st.TransferFormat(cellValues.Index(i).String())
+      if titleFields.Index(i).String() == "certified_date" {	// 日期: - or /
+         val := cellValues.Index(i).String()
+         idx := strings.Index(val, "/")
+         if idx != -1 {  // 分隔為 /
+            val = strings.ReplaceAll(val, "/", "-") 
+         }
+         certdate, err := st.TransferFormat(val)
          if err != nil {
-            cells[titleFields.Index(i).String()] = "日期格式錯誤"
+            cells[titleFields.Index(i).String()] = "日期格式錯誤:" + err.Error()
          } else {
             cells[titleFields.Index(i).String()] = certdate
          }
