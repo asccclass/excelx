@@ -110,11 +110,16 @@ func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (ma
    cells := make(map[string]string, len)
    st := sherrytime.NewSherryTime("Asia/Taipei", "-")  // Initial
    for i := 0; i < cellValues.Len(); i++ {
+      // 檢查日期格式，將其他分隔符號都轉為-分隔
       if titleFields.Index(i).String() == "certified_date" {	// 日期: - or /
          val := cellValues.Index(i).String()
          idx := strings.Index(val, "/")
          if idx != -1 {  // 分隔為 /
             val = strings.ReplaceAll(val, "/", "-") 
+         } else {   // 若分隔為 .
+            if idx = strings.Index(val, "."); idx != -1 {
+               val = strings.ReplaceAll(val, ".", "-")
+            }
          }
          certdate, err := st.TransferFormat(val)
          if err != nil {
