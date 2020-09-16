@@ -6,7 +6,6 @@ import(
    "fmt"
    "sort"
    "time"
-   // "bytes"
    "reflect"
    "strings"
    "strconv"
@@ -16,11 +15,11 @@ import(
    "io/ioutil"
    "encoding/csv"
    "encoding/json"
+   "github.com/gorilla/mux"
+   "github.com/saintfish/chardet"
    log "github.com/sirupsen/logrus"
    "github.com/asccclass/sherrytime"
-   // _ "github.com/paulrosania/go-charset/data"
-   // "github.com/paulrosania/go-charset/charset"
-   "github.com/saintfish/chardet"
+   "github.com/asccclass/staticfileserver"
    "github.com/360EntSecGroup-Skylar/excelize"
 )
 
@@ -36,12 +35,7 @@ type ExcelJson struct {
 
 type Excelsrv struct {
    Rows map[string]string
-}
-
-func(xls *Excelsrv) Error(w http.ResponseWriter, err error) {
-   w.Header().Set("Content-Type", "application/json;charset=UTF-8")
-   w.WriteHeader(http.StatusOK)
-   fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
+   Srv	*SherryServer.ShryServer
 }
 
 // 取得tab數量及名稱
@@ -69,7 +63,7 @@ func(xls *Excelsrv) SetHeader(rows []map[string]string)([]string) {
 }
 
 //將Json轉為Excel
-func (xls *Excelsrv) Json2Excel(f *excelize.File, sheetName string, rows ExcelJson)(error) {
+func(xls *Excelsrv) Json2Excel(f *excelize.File, sheetName string, rows ExcelJson)(error) {
    index := f.NewSheet(sheetName)
    line := 1
    for i, row := range rows.Rows {		// row
@@ -85,16 +79,11 @@ func (xls *Excelsrv) Json2Excel(f *excelize.File, sheetName string, rows ExcelJs
       line++
    }
    f.SetActiveSheet(index)
-/*
-   if err := f.SaveAs("/tmp/excel/tmp1.xlsx"); err != nil {
-      return nil, fmt.Errorf("Write file error(%v).", err)
-   }
-*/
    return nil
 }
 
 // 將Excel檔案轉為Json輸出
-func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (map[string]string, error) {
+func(xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (map[string]string, error) {
    cellValues := reflect.ValueOf(row)
    titleFields := reflect.ValueOf(title)
 
@@ -134,7 +123,7 @@ func (xsl *Excelsrv) Rows2JsonSingleLine(row interface{}, title interface{}) (ma
    return cells, nil
 }
 
-func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
+func(xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
    if len(rows) == 0 {
       return nil, fmt.Errorf("There has no data in Excel.")
    }
@@ -157,15 +146,14 @@ func (xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
    return vals, nil
 }
 
-func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
+func(xls *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    xf, err := excelize.OpenFile(f)
    if err != nil { return nil, err }
-
    // 檢查sheet數量
    if xf.SheetCount > 1 {
-      return nil, fmt.Errorf("上傳之Excel檔案表單(sheet)數量大於一個.")
+      return nil, fmt.Errorf("上傳之Excel檔案表單(sheet)tab數量大於一個，請刪除後再重新上傳.")
    }
-   sheetName := xf.GetSheetName(1) // start from 1
+   sheetName := xf.GetSheetName(0) // start from 0
    if sheetName == "" {
       return nil, fmt.Errorf("Can not get " + f + " sheet name.")
    }
@@ -175,7 +163,7 @@ func (xsl *Excelsrv) NewExcelSrv(f string)([]map[string]string, error) {
    if len(rows) == 0 {
       return nil, fmt.Errorf("No data in file.")
    }
-   vals, err := xsl.Rows2Json(rows)
+   vals, err := xls.Rows2Json(rows)
    if err != nil { return nil, err }
    return vals, nil
 }
@@ -253,10 +241,9 @@ func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request)
    _ = os.Remove("/tmp/excel/" + fname)
 }
 
-// ParsefileFromWeb 將excel/csv轉為CSV
+// ParsefileFromWeb 將excel/csv轉為JSON
 func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    savedPath := ""
-
    defer func() {
       if savedPath != "" {
          _ = os.Remove(savedPath)
@@ -266,8 +253,7 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    r.ParseMultipartForm(10 << 20)
    file, handler, err := r.FormFile("xlsx")
    if err != nil {
-      http.Error(w, err.Error(), http.StatusInternalServerError)
-      log.Printf("FormFile error): %v", err)
+      xls.Srv.Error.Error2Web(w, err)
       return
    }
    defer file.Close()
@@ -289,7 +275,7 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
          if line == 0 {
             xcharset, err = xls.CharsetDetect([]byte(rows[0]))
             if err != nil {
-               xls.Error(w, fmt.Errorf("encoding detect error"))
+               xls.Srv.Error.Error2Web(w, fmt.Errorf("encoding detect error"))
                return
             }
             log.Printf("charset=%v", xcharset)
@@ -306,31 +292,26 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
          vals = append(vals, cell) 
       }
       if len(vals) == 0 {
-         xls.Error(w, fmt.Errorf("no data in csv file"))
+         xls.Srv.Error.Error2Web(w, fmt.Errorf("no data in csv file"))
          return
       }
-   } else {
+   } else if fileExtension == "xlsx" {
       filename := nameParts[1]
       savedPath = filepath.Join("/tmp/excel/", filename)
       f, err := os.OpenFile(savedPath, os.O_WRONLY|os.O_CREATE, 0666)
       if err != nil {
-         http.Error(w, err.Error(), http.StatusInternalServerError)
-         log.Printf("os.OpenFile() error:%v(%v)", err, savedPath)
+         xls.Srv.Error.Error2Web(w, err)
          return
       }
       defer f.Close()
       _, err = io.Copy(f, file)
       if err != nil {
-         http.Error(w, err.Error(), http.StatusInternalServerError)
-         log.Printf("io.Copy() Error:%v", err)
+         xls.Srv.Error.Error2Web(w, err)
          return
       }
-
       vals, err = xls.NewExcelSrv(savedPath)
       if err != nil { 
-         w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-         w.WriteHeader(http.StatusOK)
-         fmt.Fprintf(w, "{\"errMsg\": \"%s\"}", err.Error())
+         xls.Srv.Error.Error2Web(w, err)
          return 
       }
    }
@@ -347,9 +328,16 @@ func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    w.Write(valj)
 }
 
-// check health
-func (xls *Excelsrv) Healthz(w http.ResponseWriter, r *http.Request) {
-  w.Header().Set("Content-Type", "application/json")
-  w.WriteHeader(http.StatusOK)
+// Router API
+func(xls *Excelsrv) AddRouter(router *mux.Router) {
+   router.HandleFunc("/excel2json", xls.ParsefileFromWeb).Methods("POST")
+   router.HandleFunc("/json2excel", xls.DownloadFileFromWeb).Methods("POST")
+   // router.HandleFunc("/csv2json", xls.ParseCSVfileFromWeb).Methods("POST")
 }
 
+// Initial Excelsrv
+func NewExcelsrv(srv *SherryServer.ShryServer)(*Excelsrv, error) {
+   return &Excelsrv {
+      Srv: srv, 
+   }, nil
+}

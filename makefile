@@ -25,7 +25,7 @@ dockerpush:
 run: docker
 	docker run --restart=always -d --name ${ContainerName} \
 	-v /etc/localtime:/etc/localtime:ro \
-        -v ${CURDIR}tmp:/tmp/excel \
+        -v ${CURDIR}tmp:/tmp \
 	--env-file ./envfile \
 	-p ${PORT}:80 ${ImageName}:${APPVersion}
 	sh clean.sh
