@@ -9,6 +9,7 @@ MKFILE := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURDIR := $(dir $(MKFILE))
 
 build:
+	go env -w GOPRIVATE=github.com/asccclass
 	GOOS=linux GOARCH=amd64 GO111MODULE=off go build -tags netgo \
 	-ldflags "-s -w -X version.BuildTime=${BUILD_TIME}" \
 	-o ${APP}
