@@ -64,7 +64,10 @@ func(xls *Excelsrv) SetHeader(rows []map[string]string)([]string) {
 
 //將Json轉為Excel
 func(xls *Excelsrv) Json2Excel(f *excelize.File, sheetName string, rows ExcelJson)(error) {
-   index := f.NewSheet(sheetName)
+   index, err := f.NewSheet(sheetName)
+   if err != nil {
+      return err
+   }
    line := 1
    for i, row := range rows.Rows {		// row
       if(i == 0)  {  // write header
