@@ -137,11 +137,10 @@ func(xsl *Excelsrv) Rows2Json(rows [][]string)([]map[string]string, error) {
       if err != nil {
          errorStr += "Line " + strconv.Itoa(i) + ": " + err.Error()
       }
-      // vals = append(vals, val) 
       vals[i-1] = val 
    }
    if errorStr != "" {
-      return nil, fmt.Errorf("Row2Json:%s", errorStr)
+      return nil, fmt.Errorf("Row2Json:%s\n%v", errorStr, vals[1])
    }
    return vals, nil
 }
@@ -242,7 +241,7 @@ func (xls *Excelsrv) DownloadFileFromWeb(w http.ResponseWriter, r *http.Request)
 }
 
 // ParsefileFromWeb 將excel/csv轉為JSON
-func (xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
+func(xls *Excelsrv) ParsefileFromWeb(w http.ResponseWriter, r *http.Request) {
    savedPath := ""
    defer func() {
       if savedPath != "" {
