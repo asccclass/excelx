@@ -1,5 +1,5 @@
 BUILD_TIME?=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
-APPVersion?=0.0.2
+APPVersion?=0.0.3
 ContainerTagName?=justgps/excel
 APP?=app
 PORT?=11004
@@ -10,7 +10,7 @@ CURDIR := $(dir $(MKFILE))
 
 build:
 	go env -w GOPRIVATE=github.com/asccclass
-	GOOS=linux GOARCH=amd64 GO111MODULE=off go build -tags netgo \
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 GO111MODULE=off go build -tags netgo \
 	-ldflags "-s -w -X version.BuildTime=${BUILD_TIME}" \
 	-o ${APP}
 
@@ -31,6 +31,7 @@ run: docker
 	--env-file ./envfile \
 	-p ${PORT}:80 ${ImageName}:${APPVersion}
 	sh clean.sh
+	docker logs -f -t --tail 20 ${ContainerName}
 	
 stop:
 	docker stop ${ContainerName}
