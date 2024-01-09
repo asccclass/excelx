@@ -11,6 +11,13 @@ go get github.com/360EntSecGroup-Skylar/excelize
 mkdir tmp
 ```
 
+### 更新套件
+
+```
+go get -u golang.org/x/sys
+go get -u github.com/360EntSecGroup-Skylar/excelize
+```
+
 ### RESRful API
 * /excel2json
   - 功能：將上傳的Excel檔案轉成 json 檔
