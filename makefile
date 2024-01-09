@@ -48,3 +48,5 @@ re:stop rm run
 
 login:
 	docker exec -it ${ContainerName} /bin/sh
+s:
+	git push -u origin master
